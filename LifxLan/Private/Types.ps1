@@ -288,11 +288,548 @@ class LifxMessageGetService : LifxMessage {
 }
 
 class LifxMessageStateService : LifxMessage {
+    [LifxServiceType] $Service
+    [uint32] $Port
+
     LifxMessageStateService() : base() {
         $this.Header.Type = [LifxMesssageType]::StateService
-        $this.Header.Tagged = $true
     }
 
     LifxMessageStateService([byte[]] $PacketData) : base($PacketData) {
+        $this.Service = $this.PayloadBytes[0]
+        $this.Port = [System.BitConverter]::ToUInt32($this.PayloadBytes, 1)
+    }
+
+    [string] ToString([bool] $AllFields) {
+        $StringBuilder = [System.Text.StringBuilder]::new($this.Header.ToString($AllFields))
+        $StringBuilder.AppendFormat(", Service: {0}", $this.Service)
+        $StringBuilder.AppendFormat(", Port: {0}", $this.Port)
+
+        return $StringBuilder.ToString()
+    }
+}
+
+class LifxMessageGetHostInfo : LifxMessage {
+    LifxMessageGetHostInfo() : base() {
+        $this.Header.Type = [LifxMesssageType]::GetHostInfo
+    }
+
+    LifxMessageGetHostInfo([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageStateHostInfo : LifxMessage {
+    [single] $Signal
+    [uint32] $Tx
+    [uint32] $Rx
+    hidden [int16] $Reserved
+
+    LifxMessageStateHostInfo() : base() {
+        $this.Header.Type = [LifxMesssageType]::StateHostInfo
+    }
+
+    LifxMessageStateHostInfo([byte[]] $PacketData) : base($PacketData) {
+        $this.Signal = [System.BitConverter]::ToSingle($this.PayloadBytes, 0)
+        $this.Tx = [System.BitConverter]::ToUInt32($this.PayloadBytes, 4)
+        $this.Rx = [System.BitConverter]::ToUInt32($this.PayloadBytes, 8)
+        $this.Reserved = [System.BitConverter]::ToInt16($this.PayloadBytes, 12)
+    }
+
+    [string] ToString([bool] $AllFields) {
+        $StringBuilder = [System.Text.StringBuilder]::new($this.Header.ToString($AllFields))
+        $StringBuilder.AppendFormat(", Signal: {0}", $this.Signal)
+        $StringBuilder.AppendFormat(", TxCount: {0}", $this.Tx)
+        $StringBuilder.AppendFormat(", RxCount: {0}", $this.Rx)
+        if ($AllFields) {$StringBuilder.AppendFormat(", Reserved: {0}", $this.Reserved)}
+
+        return $StringBuilder.ToString()
+    }
+}
+
+class LifxMessageGetHostFirmware : LifxMessage {
+    LifxMessageGetHostFirmware() : base() {
+        $this.Header.Type = [LifxMesssageType]::GetHostFirmware
+    }
+
+    LifxMessageGetHostFirmware([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageStateHostFirmware : LifxMessage {
+    [System.DateTime] $Build
+    hidden [uint64] $Reserved
+    [uint32] $Version
+
+    LifxMessageStateHostFirmware() : base() {
+        $this.Header.Type = [LifxMesssageType]::StateHostFirmware
+    }
+
+    LifxMessageStateHostFirmware([byte[]] $PacketData) : base($PacketData) {
+        $this.Build = [System.DateTime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc).AddTicks([System.BitConverter]::ToUInt64($this.PayloadBytes, 0) / 100)
+        $this.Reserved = [System.BitConverter]::ToUInt64($this.PayloadBytes, 8)
+        $this.Version = [System.BitConverter]::ToUInt32($this.PayloadBytes, 16)
+    }
+
+    [string] ToString([bool] $AllFields) {
+        $StringBuilder = [System.Text.StringBuilder]::new($this.Header.ToString($AllFields))
+        $StringBuilder.AppendFormat(", BuildDate: {0:o}", $this.Build)
+        $StringBuilder.AppendFormat(", Version: {0:X8}", $this.Version)
+        if ($AllFields) {$StringBuilder.AppendFormat(", Reserved: {0:X16}", $this.Reserved)}
+
+        return $StringBuilder.ToString()
+    }
+}
+
+class LifxMessageGetWifiInfo : LifxMessage {
+    LifxMessageGetWifiInfo() : base() {
+        $this.Header.Type = [LifxMesssageType]::GetWifiInfo
+    }
+
+    LifxMessageGetWifiInfo([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageStateWifiInfo : LifxMessage {
+    [single] $Signal
+    [uint32] $Tx
+    [uint32] $Rx
+    hidden [int16] $Reserved
+
+    LifxMessageStateWifiInfo() : base() {
+        $this.Header.Type = [LifxMesssageType]::StateWifiInfo
+    }
+
+    LifxMessageStateWifiInfo([byte[]] $PacketData) : base($PacketData) {
+        $this.Signal = [System.BitConverter]::ToSingle($this.PayloadBytes, 0)
+        $this.Tx = [System.BitConverter]::ToUInt32($this.PayloadBytes, 4)
+        $this.Rx = [System.BitConverter]::ToUInt32($this.PayloadBytes, 8)
+        $this.Reserved = [System.BitConverter]::ToInt16($this.PayloadBytes, 12)
+    }
+
+    [string] ToString([bool] $AllFields) {
+        $StringBuilder = [System.Text.StringBuilder]::new($this.Header.ToString($AllFields))
+        $StringBuilder.AppendFormat(", Signal: {0}", $this.Signal)
+        $StringBuilder.AppendFormat(", TxCount: {0}", $this.Tx)
+        $StringBuilder.AppendFormat(", RxCount: {0}", $this.Rx)
+        if ($AllFields) {$StringBuilder.AppendFormat(", Reserved: {0}", $this.Reserved)}
+
+        return $StringBuilder.ToString()
+    }
+}
+
+class LifxMessageGetWifiFirmware : LifxMessage {
+    LifxMessageGetWifiFirmware() : base() {
+        $this.Header.Type = [LifxMesssageType]::GetWifiFirmware
+    }
+
+    LifxMessageGetWifiFirmware([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageStateWifiFirmware : LifxMessage {
+    [System.DateTime] $Build
+    hidden [uint64] $Reserved
+    [uint32] $Version
+
+    LifxMessageStateWifiFirmware() : base() {
+        $this.Header.Type = [LifxMesssageType]::StateWifiFirmware
+    }
+
+    LifxMessageStateWifiFirmware([byte[]] $PacketData) : base($PacketData) {
+        $this.Build = [System.DateTime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc).AddTicks([System.BitConverter]::ToUInt64($this.PayloadBytes, 0) / 100)
+        $this.Reserved = [System.BitConverter]::ToUInt64($this.PayloadBytes, 8)
+        $this.Version = [System.BitConverter]::ToUInt32($this.PayloadBytes, 16)
+    }
+
+    [string] ToString([bool] $AllFields) {
+        $StringBuilder = [System.Text.StringBuilder]::new($this.Header.ToString($AllFields))
+        $StringBuilder.AppendFormat(", BuildDate: {0:o}", $this.Build)
+        $StringBuilder.AppendFormat(", Version: {0:X8}", $this.Version)
+        if ($AllFields) {$StringBuilder.AppendFormat(", Reserved: {0:X16}", $this.Reserved)}
+
+        return $StringBuilder.ToString()
+    }
+}
+
+class LifxMessageGetPower : LifxMessage {
+    LifxMessageGetPower() : base() {
+        $this.Header.Type = [LifxMesssageType]::GetPower
+    }
+
+    LifxMessageGetPower([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageSetPower : LifxMessage {
+    [LifxPowerLevel] $PowerLevel
+
+    LifxMessageSetPower() : base() {
+        $this.Header.Type = [LifxMesssageType]::SetPower
+        $this.PowerLevel = [LifxPowerLevel]::Enabled
+    }
+
+    LifxMessageSetPower([LifxPowerLevel] $PowerLevel) : base() {
+        $this.Header.Type = [LifxMesssageType]::SetPower
+        $this.PowerLevel = $PowerLevel
+    }
+
+    LifxMessageSetPower([byte[]] $PacketData) : base($PacketData) {
+    }
+
+    [byte[]] GetPayloadBytes() {
+        $this.PayloadBytes = @([System.BitConverter]::GetBytes([uint16] $this.PowerLevel))
+        return $this.PayloadBytes
+    }
+}
+
+class LifxMessageStatePower : LifxMessage {
+    [LifxPowerLevel] $PowerLevel
+
+    LifxMessageStatePower() : base() {
+        $this.Header.Type = [LifxMesssageType]::StatePower
+    }
+
+    LifxMessageStatePower([byte[]] $PacketData) : base($PacketData) {
+        $this.PowerLevel = [LifxPowerLevel] [System.BitConverter]::ToUInt16($this.PayloadBytes, 0)
+    }
+
+    [string] ToString([bool] $AllFields) {
+        $StringBuilder = [System.Text.StringBuilder]::new($this.Header.ToString($AllFields))
+        $StringBuilder.AppendFormat(", PowerLevel: {0}", $this.PowerLevel)
+
+        return $StringBuilder.ToString()
+    }
+}
+
+class LifxMessageGetLabel : LifxMessage {
+    LifxMessageGetLabel() : base() {
+        $this.Header.Type = [LifxMesssageType]::GetLabel
+    }
+
+    LifxMessageGetLabel([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageSetLabel : LifxMessage {
+    LifxMessageSetLabel() : base() {
+        $this.Header.Type = [LifxMesssageType]::SetLabel
+    }
+
+    LifxMessageSetLabel([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageStateLabel : LifxMessage {
+    LifxMessageStateLabel() : base() {
+        $this.Header.Type = [LifxMesssageType]::StateLabel
+    }
+
+    LifxMessageStateLabel([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageGetVersion : LifxMessage {
+    LifxMessageGetVersion() : base() {
+        $this.Header.Type = [LifxMesssageType]::GetVersion
+    }
+
+    LifxMessageGetVersion([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageStateVersion : LifxMessage {
+    LifxMessageStateVersion() : base() {
+        $this.Header.Type = [LifxMesssageType]::StateVersion
+    }
+
+    LifxMessageStateVersion([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageGetInfo : LifxMessage {
+    LifxMessageGetInfo() : base() {
+        $this.Header.Type = [LifxMesssageType]::GetInfo
+    }
+
+    LifxMessageGetInfo([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageStateInfo : LifxMessage {
+    LifxMessageStateInfo() : base() {
+        $this.Header.Type = [LifxMesssageType]::StateInfo
+    }
+
+    LifxMessageStateInfo([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageAcknowledgement : LifxMessage {
+    LifxMessageAcknowledgement() : base() {
+        $this.Header.Type = [LifxMesssageType]::Acknowledgement
+    }
+
+    LifxMessageAcknowledgement([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageGetLocation : LifxMessage {
+    LifxMessageGetLocation() : base() {
+        $this.Header.Type = [LifxMesssageType]::GetLocation
+    }
+
+    LifxMessageGetLocation([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageSetLocation : LifxMessage {
+    LifxMessageSetLocation() : base() {
+        $this.Header.Type = [LifxMesssageType]::SetLocation
+    }
+
+    LifxMessageSetLocation([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageStateLocation : LifxMessage {
+    LifxMessageStateLocation() : base() {
+        $this.Header.Type = [LifxMesssageType]::StateLocation
+    }
+
+    LifxMessageStateLocation([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageGetGroup : LifxMessage {
+    LifxMessageGetGroup() : base() {
+        $this.Header.Type = [LifxMesssageType]::GetGroup
+    }
+
+    LifxMessageGetGroup([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageSetGroup : LifxMessage {
+    LifxMessageSetGroup() : base() {
+        $this.Header.Type = [LifxMesssageType]::SetGroup
+    }
+
+    LifxMessageSetGroup([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageStateGroup : LifxMessage {
+    LifxMessageStateGroup() : base() {
+        $this.Header.Type = [LifxMesssageType]::StateGroup
+    }
+
+    LifxMessageStateGroup([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageEchoRequest : LifxMessage {
+    LifxMessageEchoRequest() : base() {
+        $this.Header.Type = [LifxMesssageType]::EchoRequest
+    }
+
+    LifxMessageEchoRequest([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageEchoResponse : LifxMessage {
+    LifxMessageEchoResponse() : base() {
+        $this.Header.Type = [LifxMesssageType]::EchoResponse
+    }
+
+    LifxMessageEchoResponse([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageLightGet : LifxMessage {
+    LifxMessageLightGet() : base() {
+        $this.Header.Type = [LifxMesssageType]::LightGet
+    }
+
+    LifxMessageLightGet([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageLightSetColor : LifxMessage {
+    LifxMessageLightSetColor() : base() {
+        $this.Header.Type = [LifxMesssageType]::GetSerLightSetColorvice
+    }
+
+    LifxMessageLightSetColor([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageLightSetWaveform : LifxMessage {
+    LifxMessageLightSetWaveform() : base() {
+        $this.Header.Type = [LifxMesssageType]::LightSetWaveform
+    }
+
+    LifxMessageLightSetWaveform([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageLightState : LifxMessage {
+    LifxMessageLightState() : base() {
+        $this.Header.Type = [LifxMesssageType]::LightState
+    }
+
+    LifxMessageLightState([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageLightGetPower : LifxMessage {
+    LifxMessageLightGetPower() : base() {
+        $this.Header.Type = [LifxMesssageType]::LightGetPower
+    }
+
+    LifxMessageLightGetPower([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageLightSetPower : LifxMessage {
+    LifxMessageLightSetPower() : base() {
+        $this.Header.Type = [LifxMesssageType]::LightSetPower
+    }
+
+    LifxMessageLightSetPower([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageLightStatePower : LifxMessage {
+    LifxMessageLightStatePower() : base() {
+        $this.Header.Type = [LifxMesssageType]::LightStatePower
+    }
+
+    LifxMessageLightStatePower([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageLightSetWaveformOptional : LifxMessage {
+    LifxMessageLightSetWaveformOptional() : base() {
+        $this.Header.Type = [LifxMesssageType]::LightSetWaveformOptional
+    }
+
+    LifxMessageLightSetWaveformOptional([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageLightGetInfrared : LifxMessage {
+    LifxMessageLightGetInfrared() : base() {
+        $this.Header.Type = [LifxMesssageType]::LightGetInfrared
+    }
+
+    LifxMessageLightGetInfrared([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageLightStateInfrared : LifxMessage {
+    LifxMessageLightStateInfrared() : base() {
+        $this.Header.Type = [LifxMesssageType]::LightStateInfrared
+    }
+
+    LifxMessageLightStateInfrared([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageLightSetInfrared : LifxMessage {
+    LifxMessageLightSetInfrared() : base() {
+        $this.Header.Type = [LifxMesssageType]::LightSetInfrared
+    }
+
+    LifxMessageLightSetInfrared([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageMultiZoneSetColorZones : LifxMessage {
+    LifxMessageMultiZoneSetColorZones() : base() {
+        $this.Header.Type = [LifxMesssageType]::MultiZoneSetColorZones
+    }
+
+    LifxMessageMultiZoneSetColorZones([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageMultiZoneGetColorZones : LifxMessage {
+    LifxMessageMultiZoneGetColorZones() : base() {
+        $this.Header.Type = [LifxMesssageType]::MultiZoneGetColorZones
+    }
+
+    LifxMessageMultiZoneGetColorZones([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageMultiZoneStateZone : LifxMessage {
+    LifxMessageMultiZoneStateZone() : base() {
+        $this.Header.Type = [LifxMesssageType]::MultiZoneStateZone
+    }
+
+    LifxMessageMultiZoneStateZone([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageMultiZoneStateMultiZone : LifxMessage {
+    LifxMessageMultiZoneStateMultiZone() : base() {
+        $this.Header.Type = [LifxMesssageType]::MultiZoneStateMultiZone
+    }
+
+    LifxMessageMultiZoneStateMultiZone([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageTileGetDeviceChain : LifxMessage {
+    LifxMessageTileGetDeviceChain() : base() {
+        $this.Header.Type = [LifxMesssageType]::TileGetDeviceChain
+    }
+
+    LifxMessageTileGetDeviceChain([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageTileStateDeviceChain : LifxMessage {
+    LifxMessageTileStateDeviceChain() : base() {
+        $this.Header.Type = [LifxMesssageType]::TileStateDeviceChain
+    }
+
+    LifxMessageTileStateDeviceChain([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageTileSetUserPosition : LifxMessage {
+    LifxMessageTileSetUserPosition() : base() {
+        $this.Header.Type = [LifxMesssageType]::TileSetUserPosition
+    }
+
+    LifxMessageTileSetUserPosition([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageTileGetTileState64 : LifxMessage {
+    LifxMessageTileGetTileState64() : base() {
+        $this.Header.Type = [LifxMesssageType]::TileGetTileState64
+    }
+
+    LifxMessageTileGetTileState64([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageTileStateTileState64 : LifxMessage {
+    LifxMessageTileStateTileState64() : base() {
+        $this.Header.Type = [LifxMesssageType]::TileStateTileState64
+    }
+
+    LifxMessageTileStateTileState64([byte[]] $PacketData) : base($PacketData) {
+    }
+}
+
+class LifxMessageTileSetTileState64 : LifxMessage {
+    LifxMessageTileSetTileState64() : base() {
+        $this.Header.Type = [LifxMesssageType]::TileSetTileState64
+    }
+
+    LifxMessageTileSetTileState64([byte[]] $PacketData) : base($PacketData) {
     }
 }
