@@ -84,7 +84,7 @@ class LifxHeader {
     #EndRegion Frame Address [16 Bytes]
 
     #Region Protocol Header [12 Bytes]
-    [System.DateTime] $Timestamp = [System.DateTime]::Now       # 64 bits [24..31] [uint64] # Nanoseconds since unix epoch (utc)
+    [datetime] $Timestamp = [datetime]::Now                     # 64 bits [24..31] [uint64] # Nanoseconds since unix epoch (utc)
     [LifxMesssageType] $Type = [LifxMesssageType]::GetService   # 16 bits [32..33] [uint16]
     hidden [uint16] $Reserved4 = 0                              # 16 bits [34..35]
     #EndRegion Protocol Header [12 Bytes]
@@ -121,7 +121,7 @@ class LifxHeader {
         #EndRegion Frame Address
 
         #Region Protocol Header
-        $this.Timestamp = [System.DateTime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc).AddTicks($BinaryReader.ReadUInt64() / 100).ToLocalTime()
+        $this.Timestamp = [datetime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc).AddTicks($BinaryReader.ReadUInt64() / 100).ToLocalTime()
         $this.Type = [LifxMesssageType] $BinaryReader.ReadUInt16()
         $this.Reserved4 = $BinaryReader.ReadUInt16()
         #EndRegion Protocol Header
@@ -158,7 +158,7 @@ class LifxHeader {
         #EndRegion Frame Address
 
         #Region Protocol Header
-        $BinaryWriter.Write([uint64] (($this.Timestamp.ToUniversalTime() - [System.DateTime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc)).Ticks * 100))
+        $BinaryWriter.Write([uint64] (($this.Timestamp.ToUniversalTime() - [datetime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc)).Ticks * 100))
         $BinaryWriter.Write([uint16] $this.Type.value__)
         $BinaryWriter.Write($this.Reserved4)
         #EndRegion Protocol Header
@@ -185,7 +185,7 @@ class LifxHeader {
         $StringBuilder.AppendFormat(", AckReqd: {0}", $this.AcknowledgementRequired)
         $StringBuilder.AppendFormat(", ResponseReqd: {0}", $this.ResponseRequired)
         $StringBuilder.AppendFormat(", Sequence: {0}", $this.Sequence)
-        $StringBuilder.AppendFormat(", Timestamp: {0}", $this.Timestamp)
+        $StringBuilder.AppendFormat(", Timestamp: {0:o}", $this.Timestamp)
         if ($AllFields) {$StringBuilder.AppendFormat(", R4: {0:X4}", $this.Reserved4)}
 
         return $StringBuilder.ToString()
@@ -356,7 +356,7 @@ class LifxMessageGetHostFirmware : LifxMessage {
 }
 
 class LifxMessageStateHostFirmware : LifxMessage {
-    [System.DateTime] $Build
+    [datetime] $Build
     hidden [uint64] $Reserved
     [uint32] $Version
 
@@ -365,7 +365,7 @@ class LifxMessageStateHostFirmware : LifxMessage {
     }
 
     LifxMessageStateHostFirmware([byte[]] $PacketData) : base($PacketData) {
-        $this.Build = [System.DateTime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc).AddTicks([System.BitConverter]::ToUInt64($this.PayloadBytes, 0) / 100)
+        $this.Build = [datetime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc).AddTicks([System.BitConverter]::ToUInt64($this.PayloadBytes, 0) / 100)
         $this.Reserved = [System.BitConverter]::ToUInt64($this.PayloadBytes, 8)
         $this.Version = [System.BitConverter]::ToUInt32($this.PayloadBytes, 16)
     }
@@ -427,7 +427,7 @@ class LifxMessageGetWifiFirmware : LifxMessage {
 }
 
 class LifxMessageStateWifiFirmware : LifxMessage {
-    [System.DateTime] $Build
+    [datetime] $Build
     hidden [uint64] $Reserved
     [uint32] $Version
 
@@ -436,7 +436,7 @@ class LifxMessageStateWifiFirmware : LifxMessage {
     }
 
     LifxMessageStateWifiFirmware([byte[]] $PacketData) : base($PacketData) {
-        $this.Build = [System.DateTime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc).AddTicks([System.BitConverter]::ToUInt64($this.PayloadBytes, 0) / 100)
+        $this.Build = [datetime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc).AddTicks([System.BitConverter]::ToUInt64($this.PayloadBytes, 0) / 100)
         $this.Reserved = [System.BitConverter]::ToUInt64($this.PayloadBytes, 8)
         $this.Version = [System.BitConverter]::ToUInt32($this.PayloadBytes, 16)
     }
