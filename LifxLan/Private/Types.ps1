@@ -548,7 +548,7 @@ class LifxMessageStateLabel : LifxMessage {
     }
 
     LifxMessageStateLabel([byte[]] $PacketData) : base($PacketData) {
-        $this.Label = [System.Text.Encoding]::UTF8.GetString($this.PayloadBytes[0..31])
+        $this.Label = [System.Text.Encoding]::UTF8.GetString($this.PayloadBytes[0..31]).Replace("`0", "")
     }
 
     [string] ToString([bool] $AllFields) {
@@ -692,7 +692,7 @@ class LifxMessageStateLocation : LifxMessage {
 
     LifxMessageStateLocation([byte[]] $PacketData) : base($PacketData) {
         $this.Location = [guid]::new([byte[]] $this.PayloadBytes[0..15])
-        $this.Label = [System.Text.Encoding]::UTF8.GetString($this.PayloadBytes[16..47])
+        $this.Label = [System.Text.Encoding]::UTF8.GetString($this.PayloadBytes[16..47]).Replace("`0", "")
         $this.UpdatedAt = [datetime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc).AddTicks([System.BitConverter]::ToUInt64($this.PayloadBytes, 48) / 100).ToLocalTime()
     }
 
@@ -762,7 +762,7 @@ class LifxMessageStateGroup : LifxMessage {
 
     LifxMessageStateGroup([byte[]] $PacketData) : base($PacketData) {
         $this.Group = [guid]::new([byte[]] $this.PayloadBytes[0..15])
-        $this.Label = [System.Text.Encoding]::UTF8.GetString($this.PayloadBytes[16..47])
+        $this.Label = [System.Text.Encoding]::UTF8.GetString($this.PayloadBytes[16..47]).Replace("`0", "")
         $this.UpdatedAt = [datetime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc).AddTicks([System.BitConverter]::ToUInt64($this.PayloadBytes, 48) / 100).ToLocalTime()
     }
 
