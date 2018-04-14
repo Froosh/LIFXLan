@@ -53,6 +53,7 @@ enum LifxMesssageType {
 
 enum LifxServiceType {
     UDP = 1
+    Type5 = 5 # Multicast?
 }
 
 enum LifxPowerLevel {
@@ -62,29 +63,31 @@ enum LifxPowerLevel {
 
 
 class LifxHeader {
-    static hidden [System.Net.NetworkInformation.PhysicalAddress] $BROADCAST_MAC = "00-00-00-00-00-00-00-00"
     static hidden [uint16] $HEADER_SIZE_BYTES = 36
 
-    # Frame Header [8 Bytes]
+    #Region Frame Header [8 Bytes]
     [uint16] $Size = [LifxHeader]::HEADER_SIZE_BYTES            # 16 bits [0..1]
-    [byte] $Origin = 0                                          # 2 bits [2..
-    [bool] $Tagged                                              # 1 bit ..
-    [bool] $Addressable = $true                                 # 1 bit ..
-    [uint16] $Protocol = 1024                                   # 12 bits ..3]
+    [byte] $Origin = 0                                          # 2 bits [2..       # Must be 0
+    [bool] $Tagged = $false                                     # 1 bit ..
+    [bool] $Addressable = $true                                 # 1 bit ..          # Must be 1
+    [uint16] $Protocol = 1024                                   # 12 bits ..3]      # Must be 1024
     [uint32] $Source = $PID                                     # 32 bits [4..7]
+    #EndRegion Frame Header [8 Bytes]
 
-    # Frame Address [16 Bytes]
-    [uint64] $Target                                            # 64 bits [8..15]
-    hidden [byte[]] $Site = 0, 0, 0, 0, 0, 0                    # 48 bits - Reserved1 or Site? [16..21]
+    #Region Frame Address [16 Bytes]
+    [uint64] $Target = 0                                        # 64 bits [8..15]
+    hidden [byte[]] $Reserved1 = 0, 0, 0, 0, 0, 0               # 48 bits [16..21]  # LIFXV2
     hidden [byte] $Reserved2 = 0                                # 6 bits [22..
-    [bool] $AcknowledgementRequired                             # 1 bit ..
-    [bool] $ResponseRequired                                    # 1 bit ..22]
-    [byte] $Sequence                                            # 8 bits [23]
+    [bool] $AcknowledgementRequired = $false                    # 1 bit ..
+    [bool] $ResponseRequired = $false                           # 1 bit ..22]
+    [byte] $Sequence = 0                                        # 8 bits [23]
+    #EndRegion Frame Address [16 Bytes]
 
-    # Protocol Header [12 Bytes]
-    hidden [uint64] $Timestamp = 0                              # 64 bits - Reserved3 or Timestamp? [24..31]
-    [LifxMesssageType] $Type = [LifxMesssageType]::GetService   # 16 bits [uint16] [32..33]
+    #Region Protocol Header [12 Bytes]
+    [System.DateTime] $Timestamp = [System.DateTime]::Now       # 64 bits [24..31] [uint64] # Nanoseconds since unix epoch (utc)
+    [LifxMesssageType] $Type = [LifxMesssageType]::GetService   # 16 bits [32..33] [uint16]
     hidden [uint16] $Reserved4 = 0                              # 16 bits [34..35]
+    #EndRegion Protocol Header [12 Bytes]
 
     LifxHeader() {
     }
@@ -97,20 +100,20 @@ class LifxHeader {
         $this.Size = $BinaryReader.ReadUInt16()
 
         $FrameHeaderStruct = $BinaryReader.ReadUInt16()
-        $this.Origin = ($FrameHeaderStruct -shr 14) -band 3 # 2^2 -1
+        $this.Origin = ($FrameHeaderStruct -shr 14) -band 3 # 2^2 - 1
         $this.Tagged = ($FrameHeaderStruct -shr 13) -band 1
         $this.Addressable = ($FrameHeaderStruct -shr 12) -band 1
-        $this.Protocol = $FrameHeaderStruct -band 4095 # 2^12 -1
+        $this.Protocol = $FrameHeaderStruct -band 4095 # 2^12 - 1
 
         $this.Source = $BinaryReader.ReadUInt32()
         #EndRegion Frame Header
 
         #Region Frame Address
         $this.Target = $BinaryReader.ReadUInt64()
-        $this.Site = $BinaryReader.ReadBytes(6)
+        $this.Reserved1 = $BinaryReader.ReadBytes(6)
 
         $FrameAddressStruct = $BinaryReader.ReadByte()
-        $this.Reserved2 = ($FrameAddressStruct -shr 2) -band 63 # 2^6 -1
+        $this.Reserved2 = ($FrameAddressStruct -shr 2) -band 63 # 2^6 - 1
         $this.AcknowledgementRequired = ($FrameAddressStruct -shr 1) -band 1
         $this.ResponseRequired = $FrameAddressStruct -band 1
 
@@ -118,7 +121,7 @@ class LifxHeader {
         #EndRegion Frame Address
 
         #Region Protocol Header
-        $this.Timestamp = $BinaryReader.ReadUInt64()
+        $this.Timestamp = [System.DateTime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc).AddTicks($BinaryReader.ReadUInt64() / 100).ToLocalTime()
         $this.Type = [LifxMesssageType] $BinaryReader.ReadUInt16()
         $this.Reserved4 = $BinaryReader.ReadUInt16()
         #EndRegion Protocol Header
@@ -143,7 +146,7 @@ class LifxHeader {
 
         #Region Frame Address
         $BinaryWriter.Write($this.Target)
-        $BinaryWriter.Write($this.Site)
+        $BinaryWriter.Write($this.Reserved1)
 
         [byte] $FrameAddressStruct = 0
         $FrameAddressStruct += ($this.Reserved2 -band 63) -shl 2
@@ -155,7 +158,7 @@ class LifxHeader {
         #EndRegion Frame Address
 
         #Region Protocol Header
-        $BinaryWriter.Write($this.Timestamp)
+        $BinaryWriter.Write([uint64] (($this.Timestamp.ToUniversalTime() - [System.DateTime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc)).Ticks * 100))
         $BinaryWriter.Write([uint16] $this.Type.value__)
         $BinaryWriter.Write($this.Reserved4)
         #EndRegion Protocol Header
@@ -170,21 +173,20 @@ class LifxHeader {
     [string] ToString([bool] $AllFields) {
         $StringBuilder = [System.Text.StringBuilder]::new()
 
-        $StringBuilder.AppendFormat("Type: {0}, ", $this.Type)
-        if ($AllFields) {$StringBuilder.AppendFormat("Origin: {0}, ", $this.Origin)}
-        $StringBuilder.AppendFormat("Tagged: {0}, ", $this.Tagged)
-        $StringBuilder.AppendFormat("Addressable: {0}, ", $this.Addressable)
-        if ($AllFields) {$StringBuilder.AppendFormat("Protocol: {0:X4}, ", $this.Protocol)}
-        $StringBuilder.AppendFormat("Source: {0:X8}, ", $this.Source)
-        $StringBuilder.AppendFormat("Target: {0:X16}, ", $this.Target)
-        if ($AllFields) {$StringBuilder.AppendFormat("Site: {0:X6}, ", $this.Site)}
-        if ($AllFields) {$StringBuilder.AppendFormat("R2: {0:X2}, ", $this.Reserved2)}
-        $StringBuilder.AppendFormat("AckReqd: {0}, ", $this.AcknowledgementRequired)
-        $StringBuilder.AppendFormat("ResponseReqd: {0}, ", $this.ResponseRequired)
-        $StringBuilder.AppendFormat("Sequence: {0}, ", $this.Sequence)
-        $StringBuilder.AppendFormat("Timestamp: {0:X16}, ", $this.Timestamp)
-        if ($AllFields) {$StringBuilder.AppendFormat("R4: {0:X4}", $this.Reserved4)}
-        $StringBuilder.AppendLine()
+        $StringBuilder.AppendFormat("Type: {0}", $this.Type)
+        if ($AllFields) {$StringBuilder.AppendFormat(", Origin: {0}", $this.Origin)}
+        $StringBuilder.AppendFormat(", Tagged: {0}", $this.Tagged)
+        if ($AllFields) {$StringBuilder.AppendFormat(", Addressable: {0}", $this.Addressable)}
+        if ($AllFields) {$StringBuilder.AppendFormat(", Protocol: {0:X4}", $this.Protocol)}
+        $StringBuilder.AppendFormat(", Source: {0:X8}", $this.Source)
+        $StringBuilder.AppendFormat(", Target: {0}", [System.BitConverter]::ToString([System.BitConverter]::GetBytes($this.Target)))
+        if ($AllFields) {$StringBuilder.AppendFormat(", R1: {0}", [System.Text.Encoding]::ASCII.GetString($this.Reserved1))}
+        if ($AllFields) {$StringBuilder.AppendFormat(", R2: {0:X2}", $this.Reserved2)}
+        $StringBuilder.AppendFormat(", AckReqd: {0}", $this.AcknowledgementRequired)
+        $StringBuilder.AppendFormat(", ResponseReqd: {0}", $this.ResponseRequired)
+        $StringBuilder.AppendFormat(", Sequence: {0}", $this.Sequence)
+        $StringBuilder.AppendFormat(", Timestamp: {0}", $this.Timestamp)
+        if ($AllFields) {$StringBuilder.AppendFormat(", R4: {0:X4}", $this.Reserved4)}
 
         return $StringBuilder.ToString()
     }
