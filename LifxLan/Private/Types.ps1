@@ -227,33 +227,50 @@ class LifxMessage {
         $BinaryReader = [System.IO.BinaryReader]::new($MemoryStream)
 
         $this.Header = [LifxHeader]::new($BinaryReader.ReadBytes([LifxHeader]::HEADER_SIZE_BYTES))
-        if ($this.Header.Size -gt $MemoryStream.Length) {
+
+        if ($this.Header.Size -ne $MemoryStream.Length) {
+            Write-Warning -Message ("[LifxMessage] Warning: Received byte count ({0}) not equal to header size count ({1})" -f $MemoryStream.Length, $this.Header.Size)
+        }
+
+        if ($MemoryStream.Length -gt [LifxHeader]::HEADER_SIZE_BYTES) {
             $this.PayloadBytes = $BinaryReader.ReadBytes($MemoryStream.Length - [LifxHeader]::HEADER_SIZE_BYTES)
         } else {
             $this.PayloadBytes = $null
         }
     }
 
+    [byte[]] GetPayloadBytes() {
+        return $this.PayloadBytes
+    }
+
     [byte[]] GetMessageBytes() {
-        if ($this.PayloadBytes) {
-            $this.Header.Size += $this.PayloadBytes.Length
+        $Payload = $this.GetPayloadBytes()
+
+        if ($Payload) {
+            $this.Header.Size = [LifxHeader]::HEADER_SIZE_BYTES + $Payload.Length
+        } else {
+            $this.Header.Size = [LifxHeader]::HEADER_SIZE_BYTES
         }
 
         $MessageBytes = $this.Header.GetHeaderBytes()
-        Write-Verbose -Message ("Header: {0}" -f (($MessageBytes | ForEach-Object -Process {$PSItem.ToString("X2")}) -join ","))
+        Write-Verbose -Message ("[LifxMessage] Header: {0}" -f (($MessageBytes | ForEach-Object -Process {$PSItem.ToString("X2")}) -join ","))
 
-        if ($this.PayloadBytes) {
-            $MessageBytes += $this.PayloadBytes
-            Write-Verbose -Message ("Payload: {0}" -f (($this.PayloadBytes | ForEach-Object -Process {$PSItem.ToString("X2")}) -join ","))
+        if ($Payload) {
+            $MessageBytes += $Payload
+            Write-Verbose -Message ("[LifxMessage] Payload: {0}" -f (($Payload | ForEach-Object -Process {$PSItem.ToString("X2")}) -join ","))
         }
 
         return $MessageBytes
     }
 
     [string] ToString() {
-        $StringBuilder = [System.Text.StringBuilder]::new($this.Header.ToString())
+        return $this.ToString($false)
+    }
+
+    [string] ToString([bool] $AllFields) {
+        $StringBuilder = [System.Text.StringBuilder]::new($this.Header.ToString($AllFields))
         if ($this.PayloadBytes) {
-            $StringBuilder.AppendLine($this.PayloadBytes.ToString("X2"))
+            $StringBuilder.AppendFormat(", Payload: {0}", [System.BitConverter]::ToString($this.PayloadBytes))
         }
 
         return $StringBuilder.ToString()
