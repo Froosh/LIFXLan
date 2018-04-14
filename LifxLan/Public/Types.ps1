@@ -7,9 +7,7 @@ enum LifxDeviceType {
 }
 
 class LifxLanDevice {
-    [LifxDeviceType]
-    $DeviceType
-
-    [string]
-    $Name
+    [uint64] $Identifier
+    [System.Net.IPEndPoint] $IPEndPoint
+    [LifxServiceType[]] $ServiceTypes = @()
 }
