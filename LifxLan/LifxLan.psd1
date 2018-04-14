@@ -36,7 +36,7 @@
     VariablesToExport      = @()
 
     FormatsToProcess       = @()
-    ScriptsToProcess       = @("Public\Types.ps1")
+    ScriptsToProcess       = @()
     TypesToProcess         = @()
 
     ModuleList             = @()
