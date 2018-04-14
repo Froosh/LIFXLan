@@ -185,7 +185,7 @@ class LifxHeader {
         $StringBuilder.AppendFormat(", AckReqd: {0}", $this.AcknowledgementRequired)
         $StringBuilder.AppendFormat(", ResponseReqd: {0}", $this.ResponseRequired)
         $StringBuilder.AppendFormat(", Sequence: {0}", $this.Sequence)
-        $StringBuilder.AppendFormat(", Timestamp: {0}", $this.Timestamp)
+        $StringBuilder.AppendFormat(", Timestamp: {0:o}", $this.Timestamp)
         if ($AllFields) {$StringBuilder.AppendFormat(", R4: {0:X4}", $this.Reserved4)}
 
         return $StringBuilder.ToString()
@@ -796,7 +796,7 @@ class LifxMessageEchoRequest : LifxMessage {
 
         if ($EchoMessageBytes.Length -lt 64) {
             $EchoMessageBytes += [byte[]]::new(64 - $EchoMessageBytes.Length)
-}
+        }
 
         $this.PayloadBytes = $EchoMessageBytes[0..63]
 
