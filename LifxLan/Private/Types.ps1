@@ -185,7 +185,7 @@ class LifxHeader {
         $StringBuilder.AppendFormat(", AckReqd: {0}", $this.AcknowledgementRequired)
         $StringBuilder.AppendFormat(", ResponseReqd: {0}", $this.ResponseRequired)
         $StringBuilder.AppendFormat(", Sequence: {0}", $this.Sequence)
-        $StringBuilder.AppendFormat(", Timestamp: {0:o}", $this.Timestamp)
+        $StringBuilder.AppendFormat(", Timestamp: {0}", $this.Timestamp)
         if ($AllFields) {$StringBuilder.AppendFormat(", R4: {0:X4}", $this.Reserved4)}
 
         return $StringBuilder.ToString()
@@ -511,21 +511,52 @@ class LifxMessageGetLabel : LifxMessage {
 }
 
 class LifxMessageSetLabel : LifxMessage {
+    [string] $Label
+
     LifxMessageSetLabel() : base() {
         $this.Header.Type = [LifxMesssageType]::SetLabel
     }
 
+    LifxMessageSetLabel([string] $Label) : base() {
+        $this.Header.Type = [LifxMesssageType]::SetLabel
+        $this.Label = $Label
+    }
+
     LifxMessageSetLabel([byte[]] $PacketData) : base($PacketData) {
+    }
+
+    [byte[]] GetPayloadBytes() {
+        if ($this.Label) {
+            $LabelBytes = @([System.Text.Encoding]::UTF8.GetBytes($this.Label))
+
+            if ($LabelBytes.Length -lt 32) {
+                $LabelBytes += [byte[]]::new(32 - $LabelBytes.Length)
+}
+
+            $this.PayloadBytes = $LabelBytes[0..31]
+        }
+
+        return $this.PayloadBytes
     }
 }
 
 class LifxMessageStateLabel : LifxMessage {
+    [string] $Label
+
     LifxMessageStateLabel() : base() {
         $this.Header.Type = [LifxMesssageType]::StateLabel
     }
 
     LifxMessageStateLabel([byte[]] $PacketData) : base($PacketData) {
+        $this.Label = [System.Text.Encoding]::UTF8.GetString($this.PayloadBytes[0..31])
     }
+
+    [string] ToString([bool] $AllFields) {
+        $StringBuilder = [System.Text.StringBuilder]::new($this.Header.ToString($AllFields))
+        $StringBuilder.AppendFormat(", Label: {0}", $this.Label)
+
+        return $StringBuilder.ToString()
+}
 }
 
 class LifxMessageGetVersion : LifxMessage {
@@ -538,11 +569,27 @@ class LifxMessageGetVersion : LifxMessage {
 }
 
 class LifxMessageStateVersion : LifxMessage {
+    [uint32] $Vendor
+    [uint32] $Product
+    [uint32] $Version
+
     LifxMessageStateVersion() : base() {
         $this.Header.Type = [LifxMesssageType]::StateVersion
     }
 
     LifxMessageStateVersion([byte[]] $PacketData) : base($PacketData) {
+        $this.Vendor = [System.BitConverter]::ToUInt32($this.PayloadBytes, 0)
+        $this.Product = [System.BitConverter]::ToUInt32($this.PayloadBytes, 4)
+        $this.Version = [System.BitConverter]::ToUInt32($this.PayloadBytes, 8)
+    }
+
+    [string] ToString([bool] $AllFields) {
+        $StringBuilder = [System.Text.StringBuilder]::new($this.Header.ToString($AllFields))
+        $StringBuilder.AppendFormat(", Vendor: {0}", $this.Vendor)
+        $StringBuilder.AppendFormat(", Product: {0}", $this.Product)
+        $StringBuilder.AppendFormat(", Version: {0}", $this.Version)
+
+        return $StringBuilder.ToString()
     }
 }
 
@@ -556,11 +603,27 @@ class LifxMessageGetInfo : LifxMessage {
 }
 
 class LifxMessageStateInfo : LifxMessage {
+    [datetime] $Time
+    [timespan] $Uptime
+    [timespan] $Downtime
+
     LifxMessageStateInfo() : base() {
         $this.Header.Type = [LifxMesssageType]::StateInfo
     }
 
     LifxMessageStateInfo([byte[]] $PacketData) : base($PacketData) {
+        $this.Time = [datetime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc).AddTicks([System.BitConverter]::ToUInt64($this.PayloadBytes, 0) / 100).ToLocalTime()
+        $this.Uptime = [timespan]::new([System.BitConverter]::ToUInt64($this.PayloadBytes, 8) / 100)
+        $this.Downtime = [timespan]::new([System.BitConverter]::ToUInt64($this.PayloadBytes, 16) / 100)
+    }
+
+    [string] ToString([bool] $AllFields) {
+        $StringBuilder = [System.Text.StringBuilder]::new($this.Header.ToString($AllFields))
+        $StringBuilder.AppendFormat(", Time: {0:o}", $this.Time)
+        $StringBuilder.AppendFormat(", Uptime: {0}", $this.Uptime)
+        $StringBuilder.AppendFormat(", Downtime: {0}", $this.Downtime)
+
+        return $StringBuilder.ToString()
     }
 }
 
@@ -583,21 +646,64 @@ class LifxMessageGetLocation : LifxMessage {
 }
 
 class LifxMessageSetLocation : LifxMessage {
+    [guid] $Location
+    [string] $Label
+    [datetime] $UpdatedAt
+
     LifxMessageSetLocation() : base() {
         $this.Header.Type = [LifxMesssageType]::SetLocation
     }
 
+    LifxMessageSetLocation([guid] $Location, [string] $Label, [datetime] $UpdatedAt = [datetime]::UtcNow) : base() {
+        $this.Header.Type = [LifxMesssageType]::SetLocation
+        $this.Location = $Location
+        $this.Label = $Label
+        $this.UpdatedAt = $UpdatedAt
+    }
+
     LifxMessageSetLocation([byte[]] $PacketData) : base($PacketData) {
+    }
+
+    [byte[]] GetPayloadBytes() {
+        $this.PayloadBytes = $this.Location.ToByteArray()
+
+        $LabelBytes = @([System.Text.Encoding]::UTF8.GetBytes($this.Label))
+
+        if ($LabelBytes.Length -lt 32) {
+            $LabelBytes += [byte[]]::new(32 - $LabelBytes.Length)
+        }
+
+        $this.PayloadBytes += $LabelBytes[0..31]
+
+        $this.PayloadBytes += [System.BitConverter]::GetBytes([uint64] (($this.UpdatedAt.ToUniversalTime() - [datetime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc)).Ticks * 100))
+
+        return $this.PayloadBytes
     }
 }
 
 class LifxMessageStateLocation : LifxMessage {
+    [guid] $Location
+    [string] $Label
+    [datetime] $UpdatedAt
+
     LifxMessageStateLocation() : base() {
         $this.Header.Type = [LifxMesssageType]::StateLocation
     }
 
     LifxMessageStateLocation([byte[]] $PacketData) : base($PacketData) {
+        $this.Location = [guid]::new([byte[]] $this.PayloadBytes[0..15])
+        $this.Label = [System.Text.Encoding]::UTF8.GetString($this.PayloadBytes[16..47])
+        $this.UpdatedAt = [datetime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc).AddTicks([System.BitConverter]::ToUInt64($this.PayloadBytes, 48) / 100).ToLocalTime()
     }
+
+    [string] ToString([bool] $AllFields) {
+        $StringBuilder = [System.Text.StringBuilder]::new($this.Header.ToString($AllFields))
+        $StringBuilder.AppendFormat(", Location: {0}", $this.Location)
+        $StringBuilder.AppendFormat(", Label: {0}", $this.Label)
+        $StringBuilder.AppendFormat(", UpdatedAt: {0:o}", $this.UpdatedAt)
+
+        return $StringBuilder.ToString()
+}
 }
 
 class LifxMessageGetGroup : LifxMessage {
@@ -610,38 +716,110 @@ class LifxMessageGetGroup : LifxMessage {
 }
 
 class LifxMessageSetGroup : LifxMessage {
+    [guid] $Group
+    [string] $Label
+    [datetime] $UpdatedAt
+
     LifxMessageSetGroup() : base() {
         $this.Header.Type = [LifxMesssageType]::SetGroup
     }
 
+    LifxMessageSetGroup([guid] $Group, [string] $Label, [datetime] $UpdatedAt = [datetime]::UtcNow) : base() {
+        $this.Header.Type = [LifxMesssageType]::SetGroup
+        $this.Group = $Group
+        $this.Label = $Label
+        $this.UpdatedAt = $UpdatedAt
+    }
+
     LifxMessageSetGroup([byte[]] $PacketData) : base($PacketData) {
+    }
+
+    [byte[]] GetPayloadBytes() {
+        $this.PayloadBytes = $this.Group.ToByteArray()
+
+        $LabelBytes = @([System.Text.Encoding]::UTF8.GetBytes($this.Label))
+
+        if ($LabelBytes.Length -lt 32) {
+            $LabelBytes += [byte[]]::new(32 - $LabelBytes.Length)
+        }
+
+        $this.PayloadBytes += $LabelBytes[0..31]
+
+        $this.PayloadBytes += [System.BitConverter]::GetBytes([uint64] (($this.UpdatedAt.ToUniversalTime() - [datetime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc)).Ticks * 100))
+
+        return $this.PayloadBytes
     }
 }
 
 class LifxMessageStateGroup : LifxMessage {
+    [guid] $Group
+    [string] $Label
+    [datetime] $UpdatedAt
+
     LifxMessageStateGroup() : base() {
         $this.Header.Type = [LifxMesssageType]::StateGroup
     }
 
     LifxMessageStateGroup([byte[]] $PacketData) : base($PacketData) {
+        $this.Group = [guid]::new([byte[]] $this.PayloadBytes[0..15])
+        $this.Label = [System.Text.Encoding]::UTF8.GetString($this.PayloadBytes[16..47])
+        $this.UpdatedAt = [datetime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc).AddTicks([System.BitConverter]::ToUInt64($this.PayloadBytes, 48) / 100).ToLocalTime()
+    }
+
+    [string] ToString([bool] $AllFields) {
+        $StringBuilder = [System.Text.StringBuilder]::new($this.Header.ToString($AllFields))
+        $StringBuilder.AppendFormat(", Group: {0}", $this.Group)
+        $StringBuilder.AppendFormat(", Label: {0}", $this.Label)
+        $StringBuilder.AppendFormat(", UpdatedAt: {0:o}", $this.UpdatedAt)
+
+        return $StringBuilder.ToString()
     }
 }
 
 class LifxMessageEchoRequest : LifxMessage {
+    [string] $EchoMessage
+
     LifxMessageEchoRequest() : base() {
         $this.Header.Type = [LifxMesssageType]::EchoRequest
     }
 
+    LifxMessageEchoRequest([string] $EchoMessage) : base() {
+        $this.Header.Type = [LifxMesssageType]::EchoRequest
+        $this.EchoMessage = $EchoMessage
+    }
+
     LifxMessageEchoRequest([byte[]] $PacketData) : base($PacketData) {
+    }
+
+    [byte[]] GetPayloadBytes() {
+        $EchoMessageBytes = @([System.Text.Encoding]::UTF8.GetBytes($this.EchoMessage))
+
+        if ($EchoMessageBytes.Length -lt 64) {
+            $EchoMessageBytes += [byte[]]::new(64 - $EchoMessageBytes.Length)
+}
+
+        $this.PayloadBytes = $EchoMessageBytes[0..63]
+
+        return $this.PayloadBytes
     }
 }
 
 class LifxMessageEchoResponse : LifxMessage {
+    [string] $EchoMessage
+
     LifxMessageEchoResponse() : base() {
         $this.Header.Type = [LifxMesssageType]::EchoResponse
     }
 
     LifxMessageEchoResponse([byte[]] $PacketData) : base($PacketData) {
+        $this.EchoMessage = [System.Text.Encoding]::UTF8.GetString($this.PayloadBytes[0..63])
+    }
+
+    [string] ToString([bool] $AllFields) {
+        $StringBuilder = [System.Text.StringBuilder]::new($this.Header.ToString($AllFields))
+        $StringBuilder.AppendFormat(", Payload: {0}", $this.EchoMessage)
+
+        return $StringBuilder.ToString()
     }
 }
 
