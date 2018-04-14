@@ -61,7 +61,7 @@ function Find-Device {
     Process {
         if ($All) {
             $LocalIP = [System.Net.IPAddress]::Any
-            $LocalPort = $LIFX_BROADCAST_PORT # v1 devices require localport to be the LIFX default port 57600
+            $LocalPort = 0 # $LIFX_BROADCAST_PORT # v1 devices may require localport to be the LIFX default port 57600
 
             $LocalEndpoint = [System.Net.IPEndPoint]::new($LocalIP, $LocalPort)
             Write-Verbose -Message ("Local Endpoint: {0}:{1}" -f $LocalEndpoint.Address.ToString(),$LocalEndpoint.Port.ToString())
@@ -75,19 +75,18 @@ function Find-Device {
             $UdpClient.Client.ReceiveTimeout = $ReceiveTimeout.TotalMilliseconds
             $UdpClient.Client.SetSocketOption([System.Net.Sockets.SocketOptionLevel]::Socket, [System.Net.Sockets.SocketOptionName]::ReuseAddress, $true)
 
-            $Message = [LifxMessageGetService]::new()
-
-            $MessageBytes = $Message.GetMessageBytes()
-
             $RemoteEndpoint = [System.Net.IPEndPoint]::new([System.Net.IPAddress]::Broadcast, $LIFX_BROADCAST_PORT)
 
+            $Message = [LifxMessageGetService]::new()
+            $MessageBytes = $Message.GetMessageBytes()
             $SendResult = $UdpClient.Send($MessageBytes, $MessageBytes.Length, $RemoteEndpoint)
-
             Write-Verbose -Message ("Sent {0} Bytes" -f $SendResult)
 
-            $StartTime = [datetime]::UtcNow
+            $StartTime = [System.DateTime]::UtcNow
 
-            while (([datetime]::UtcNow - $StartTime) -le $ReceiveTimeout) {
+            $DiscoveredDevices = @{}
+
+            while (([System.DateTime]::UtcNow - $StartTime) -le $ReceiveTimeout) {
                 try {
                     $RemoteEndpoint = [System.Net.IPEndPoint]::new([System.Net.IPAddress]::Any, $LIFX_BROADCAST_PORT)
                     $Content = $UdpClient.Receive([ref] $RemoteEndpoint)
@@ -96,6 +95,50 @@ function Find-Device {
                     Write-Verbose -Message ("Received: {0}" -f (($Content | ForEach-Object -Process {$PSItem.ToString("X2")}) -join ","))
 
                     $ReceivedMessage = [LifxMessageFactory]::CreateLifxMessage($Content)
+                    Write-Verbose -Message ("Message: {0}" -f $ReceivedMessage.ToString())
+
+                    if ($ReceivedMessage -is [LifxMessageStateService]) {
+                        $RemoteEndpoint.Port = $ReceivedMessage.Port
+                        $Device = [LifxLanDevice] @{Identifier = $ReceivedMessage.Header.Target; IPEndPoint = $RemoteEndpoint; ServiceTypes = $ReceivedMessage.Service}
+
+                        if ($DiscoveredDevices.ContainsKey($Device.Identifier) -and $DiscoveredDevices[$Device.Identifier].ServiceTypes -notcontains $Device.ServiceTypes) {
+                            $DiscoveredDevices[$Device.Identifier].ServiceTypes += $Device.ServiceTypes
+                        } else {
+                            $DiscoveredDevices.Add($Device.Identifier, $Device)
+                        }
+                    }
+                } catch [System.Net.Sockets.SocketException] {
+                    Write-Verbose -Message "Timed Out"
+                }
+            }
+
+            foreach ($Device in $DiscoveredDevices.Values) {
+                try {
+                    $RemoteEndpoint = $Device.IPEndPoint
+
+                    $Message = [LifxMessageGetPower]::new()
+                    $MessageBytes = $Message.GetMessageBytes()
+                    $SendResult = $UdpClient.Send($MessageBytes, $MessageBytes.Length, $RemoteEndpoint)
+                    Write-Verbose -Message ("Sent {0} Bytes" -f $SendResult)
+
+                    $Content = $UdpClient.Receive([ref] $RemoteEndpoint)
+
+                    Write-Verbose -Message ("Received {0} Bytes from {1}:{2}" -f $Content.Length, $RemoteEndpoint.Address.ToString(), $RemoteEndpoint.Port.ToString())
+                    Write-Verbose -Message ("Received: {0}" -f (($Content | ForEach-Object -Process {$PSItem.ToString("X2")}) -join ","))
+
+                    $ReceivedMessage = [LifxMessageFactory]::CreateLifxMessage($Content)
+                    Write-Verbose -Message ("Message: {0}" -f $ReceivedMessage.ToString($true))
+
+                    if ($ReceivedMessage -is [LifxMessageStateService]) {
+                        $RemoteEndpoint.Port = $ReceivedMessage.Port
+                        $Device = [LifxLanDevice] @{Identifier = $ReceivedMessage.Header.Target; IPEndPoint = $RemoteEndpoint; ServiceTypes = $ReceivedMessage.Service}
+
+                        if ($DiscoveredDevices.ContainsKey($Device.Identifier) -and $DiscoveredDevices[$Device.Identifier].ServiceTypes -notcontains $Device.ServiceTypes) {
+                            $DiscoveredDevices[$Device.Identifier].ServiceTypes += $Device.ServiceTypes
+                        } else {
+                            $DiscoveredDevices.Add($Device.Identifier, $Device)
+                        }
+                    }
                 } catch [System.Net.Sockets.SocketException] {
                     Write-Verbose -Message "Timed Out"
                 }
@@ -104,6 +147,8 @@ function Find-Device {
             if ($UdpClient) {
                 $UdpClient.Close()
             }
+
+            return $DiscoveredDevices.Values
         }
     }
 
