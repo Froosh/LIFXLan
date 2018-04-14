@@ -192,6 +192,27 @@ class LifxHeader {
     }
 }
 
+class LifxMessageFactory {
+    static [LifxMessage] CreateLifxMessage([byte[]] $PacketData) {
+        $TypeValue = [System.BitConverter]::ToUInt16($PacketData[32..33], 0)
+
+        try {
+            $MessageType = [LifxMesssageType] $TypeValue
+            $TypeName = "LifxMessage{0}" -f $MessageType
+            Write-Verbose -Message ("[LifxMessageFactory] Found Message Type: {0}" -f $TypeName)
+        } catch [System.Management.Automation.PSInvalidCastException] {
+            $TypeName = "LifxMessage"
+            Write-Verbose -Message ("[LifxMessageFactory] Defaulting To Message Type: {0}" -f $TypeName)
+        }
+
+        [LifxMessage] $Message = $null
+
+        # (,$PacketData) is a bit hacky, to force New-Object to pass $PacketData as a single [byte[]] parameter
+        $Message = New-Object -TypeName $TypeName -ArgumentList (, $PacketData)
+        return $Message
+    }
+}
+
 class LifxMessage {
     [LifxHeader] $Header
     hidden [byte[]] $PayloadBytes
@@ -236,26 +257,6 @@ class LifxMessage {
         }
 
         return $StringBuilder.ToString()
-    }
-}
-
-class LifxMessageFactory {
-    static [LifxMessage] CreateLifxMessage([byte[]] $PacketData) {
-        $TypeValue = [System.BitConverter]::ToUInt16($PacketData[32..33], 0)
-
-        [LifxMessage] $Message = $null
-
-        try {
-            $MessageType = [LifxMesssageType] $TypeValue
-            $TypeName = "LifxMessage{0}" -f $MessageType
-            Write-Verbose -Message ("LifxMessageFactory: Found Message Type: {0}" -f $TypeName)
-        } catch [System.Management.Automation.PSInvalidCastException] {
-            $TypeName = "LifxMessage"
-            Write-Verbose -Message ("LifxMessageFactory: Defaulting To Message Type: {0}" -f $TypeName)
-        }
-
-        $Message = New-Object -TypeName $TypeName -ArgumentList (,$PacketData)
-        return $Message
     }
 }
 
