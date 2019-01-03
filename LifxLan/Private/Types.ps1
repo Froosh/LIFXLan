@@ -544,7 +544,7 @@ class LifxMessageSetLabel : LifxMessage {
 
             if ($LabelBytes.Length -lt 32) {
                 $LabelBytes += [byte[]]::new(32 - $LabelBytes.Length)
-}
+            }
 
             $this.PayloadBytes = $LabelBytes[0..31]
         }
@@ -569,7 +569,7 @@ class LifxMessageStateLabel : LifxMessage {
         $StringBuilder.AppendFormat(", Label: {0}", $this.Label)
 
         return $StringBuilder.ToString()
-}
+    }
 }
 
 class LifxMessageGetVersion : LifxMessage {
@@ -716,7 +716,7 @@ class LifxMessageStateLocation : LifxMessage {
         $StringBuilder.AppendFormat(", UpdatedAt: {0:o}", $this.UpdatedAt)
 
         return $StringBuilder.ToString()
-}
+    }
 }
 
 class LifxMessageGetGroup : LifxMessage {
