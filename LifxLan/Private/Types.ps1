@@ -61,6 +61,19 @@ enum LifxPowerLevel {
     Enabled = 65535
 }
 
+enum LifxWaveform {
+    Saw = 0
+    Sine = 1
+    HalfSine = 2
+    Triangle = 3
+    Pulse = 4
+}
+
+enum LifxApplicationRequest {
+    NoApply = 0
+    Apply = 1
+    ApplyOnly = 2
+}
 
 class LifxHeader {
     static hidden [uint16] $HEADER_SIZE_BYTES = 36
