@@ -75,11 +75,11 @@ function Find-Device {
             $UdpClient.Client.ReceiveTimeout = $ReceiveTimeout.TotalMilliseconds
             $UdpClient.Client.SetSocketOption([System.Net.Sockets.SocketOptionLevel]::Socket, [System.Net.Sockets.SocketOptionName]::ReuseAddress, $true)
 
-            $RemoteEndpoint = [System.Net.IPEndPoint]::new([System.Net.IPAddress]::Broadcast, $LIFX_BROADCAST_PORT)
+            $BroadcastEndpoint = [System.Net.IPEndPoint]::new([System.Net.IPAddress]::Broadcast, $LIFX_BROADCAST_PORT)
 
             $Message = [LifxMessageGetService]::new()
             $MessageBytes = $Message.GetMessageBytes()
-            $SendResult = $UdpClient.Send($MessageBytes, $MessageBytes.Length, $RemoteEndpoint)
+            $SendResult = $UdpClient.Send($MessageBytes, $MessageBytes.Length, $BroadcastEndpoint)
             Write-Verbose -Message ("Sent {0} Bytes" -f $SendResult)
 
             $StartTime = [System.DateTime]::UtcNow
