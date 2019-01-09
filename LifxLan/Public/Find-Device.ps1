@@ -50,19 +50,27 @@ function Find-Device {
 
         # Select only devices of a specific type
         [LifxDeviceType]
-        $DeviceType
+        $DeviceType,
+
+        [timespan]
+        $ReceiveTimeout = (New-TimeSpan -Seconds 5),
+
+        # Local IP address to use as source
+        [System.Net.IPAddress]
+        $LocalIP = [System.Net.IPAddress]::Any,
+
+        # v1 devices may require localport to be the LIFX default port 57600
+        [ValidateSet(0,57600)]
+        [uint16]
+        $LocalPort = 0
     )
 
     Begin {
         [uint16] $LIFX_BROADCAST_PORT = 56700
-        $ReceiveTimeout = New-TimeSpan -Seconds 5
     }
 
     Process {
         if ($All) {
-            $LocalIP = [System.Net.IPAddress]::Any
-            $LocalPort = 0 # $LIFX_BROADCAST_PORT # v1 devices may require localport to be the LIFX default port 57600
-
             $LocalEndpoint = [System.Net.IPEndPoint]::new($LocalIP, $LocalPort)
             Write-Verbose -Message ("Local Endpoint: {0}:{1}" -f $LocalEndpoint.Address.ToString(),$LocalEndpoint.Port.ToString())
 
