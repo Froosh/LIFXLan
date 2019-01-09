@@ -67,7 +67,6 @@ function Find-Device {
             Write-Verbose -Message ("Local Endpoint: {0}:{1}" -f $LocalEndpoint.Address.ToString(),$LocalEndpoint.Port.ToString())
 
             $UdpClient = [System.Net.Sockets.UdpClient]::new($LocalEndpoint)
-            $UdpClient.DontFragment = $true
             $UdpClient.EnableBroadcast = $true
 
             # Blocking Receive() calls, until we do threading/async/events or something
