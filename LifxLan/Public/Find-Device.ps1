@@ -112,35 +112,64 @@ function Find-Device {
                 }
             }
 
+            $MessageTypes = @(
+                [LifxMessageGetLabel]
+                [LifxMessageGetLocation]
+                [LifxMessageGetGroup]
+                [LifxMessageGetVersion]
+            )
+
             foreach ($Device in $DiscoveredDevices.Values) {
-                try {
-                    $RemoteEndpoint = $Device.IPEndPoint
+                foreach ($MessageType in $MessageTypes) {
+                    try {
+                        $RemoteEndpoint = $Device.IPEndPoint
 
-                    $Message = [LifxMessageGetPower]::new()
-                    $MessageBytes = $Message.GetMessageBytes()
-                    $SendResult = $UdpClient.Send($MessageBytes, $MessageBytes.Length, $RemoteEndpoint)
-                    Write-Verbose -Message ("Sent {0} Bytes" -f $SendResult)
+                        $Message = $MessageType::new()
+                        $MessageBytes = $Message.GetMessageBytes()
+                        $SendResult = $UdpClient.Send($MessageBytes, $MessageBytes.Length, $RemoteEndpoint)
+                        Write-Verbose -Message ("Sent {0} Bytes" -f $SendResult)
 
-                    $Content = $UdpClient.Receive([ref] $RemoteEndpoint)
+                        $Content = $UdpClient.Receive([ref] $RemoteEndpoint)
 
-                    Write-Verbose -Message ("Received {0} Bytes from {1}:{2}" -f $Content.Length, $RemoteEndpoint.Address.ToString(), $RemoteEndpoint.Port.ToString())
-                    Write-Verbose -Message ("Received: {0}" -f (($Content | ForEach-Object -Process {$PSItem.ToString("X2")}) -join ","))
+                        Write-Verbose -Message ("Received {0} Bytes from {1}:{2}" -f $Content.Length, $RemoteEndpoint.Address.ToString(), $RemoteEndpoint.Port.ToString())
+                        Write-Verbose -Message ("Received: {0}" -f (($Content | ForEach-Object -Process {$PSItem.ToString("X2")}) -join ","))
 
-                    $ReceivedMessage = [LifxMessageFactory]::CreateLifxMessage($Content)
-                    Write-Verbose -Message ("Message: {0}" -f $ReceivedMessage.ToString($true))
+                        $ReceivedMessage = [LifxMessageFactory]::CreateLifxMessage($Content)
+                        Write-Verbose -Message ("Message: {0}" -f $ReceivedMessage.ToString())
 
-                    if ($ReceivedMessage -is [LifxMessageStateService]) {
-                        $RemoteEndpoint.Port = $ReceivedMessage.Port
-                        $Device = [LifxLanDevice] @{Identifier = $ReceivedMessage.Header.Target; IPEndPoint = $RemoteEndpoint; ServiceTypes = $ReceivedMessage.Service}
+                        switch ($ReceivedMessage.GetType()) {
+                            ([LifxMessageStateService]) {
+                                $RemoteEndpoint.Port = $ReceivedMessage.Port
+                                $Device = [LifxLanDevice] @{Identifier = $ReceivedMessage.Header.Target; IPEndPoint = $RemoteEndpoint; ServiceTypes = $ReceivedMessage.Service}
 
-                        if ($DiscoveredDevices.ContainsKey($Device.Identifier) -and $DiscoveredDevices[$Device.Identifier].ServiceTypes -notcontains $Device.ServiceTypes) {
-                            $DiscoveredDevices[$Device.Identifier].ServiceTypes += $Device.ServiceTypes
-                        } else {
-                            $DiscoveredDevices.Add($Device.Identifier, $Device)
+                                if ($DiscoveredDevices.ContainsKey($Device.Identifier) -and $DiscoveredDevices[$Device.Identifier].ServiceTypes -notcontains $Device.ServiceTypes) {
+                                    $DiscoveredDevices[$Device.Identifier].ServiceTypes += $Device.ServiceTypes
+                                } else {
+                                    $DiscoveredDevices.Add($Device.Identifier, $Device)
+                                }
+                            }
+                            ([LifxMessageStateLabel]) {
+                                $Device.Label = $ReceivedMessage.Label
+                            }
+                            ([LifxMessageStateLocation]) {
+                                $Device.Location = $ReceivedMessage.Label
+                            }
+                            ([LifxMessageStateGroup]) {
+                                $Device.Group = $ReceivedMessage.Label
+                            }
+                            ([LifxMessageStateVersion]) {
+                                $Device.Hardware = New-Object -TypeName LifxLanDeviceVersion
+                                $Device.Hardware.Vendor = $ReceivedMessage.Vendor
+                                $Device.Hardware.Product = $ReceivedMessage.Product
+                                $Device.Hardware.Version = $ReceivedMessage.Version
+                            }
+                            Default {}
                         }
+                        if ($ReceivedMessage -is [LifxMessageStateService]) {
+                        }
+                    } catch [System.Net.Sockets.SocketException] {
+                        Write-Verbose -Message "Timed Out"
                     }
-                } catch [System.Net.Sockets.SocketException] {
-                    Write-Verbose -Message "Timed Out"
                 }
             }
 
