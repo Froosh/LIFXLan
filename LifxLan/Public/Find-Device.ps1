@@ -57,7 +57,7 @@ function Find-Device {
 
         # Local IP address to use as source
         [System.Net.IPAddress]
-        $LocalIP = [System.Net.IPAddress]::Any,
+        $LocalIP = [System.Net.IPAddress]::IPv6Any,
 
         # v1 devices may require localport to be the LIFX default port 57600
         [ValidateSet(0,57600)]
@@ -66,6 +66,9 @@ function Find-Device {
     )
 
     Begin {
+        $ErrorActionPreference = [System.Management.Automation.ActionPreference]::Stop
+        Set-StrictMode -Version Latest
+
         [uint16] $LIFX_BROADCAST_PORT = 56700
     }
 
@@ -74,19 +77,26 @@ function Find-Device {
             $LocalEndpoint = [System.Net.IPEndPoint]::new($LocalIP, $LocalPort)
             Write-Verbose -Message ("Local Endpoint: {0}:{1}" -f $LocalEndpoint.Address.ToString(),$LocalEndpoint.Port.ToString())
 
-            $UdpClient = [System.Net.Sockets.UdpClient]::new($LocalEndpoint)
-            $UdpClient.EnableBroadcast = $true
+            $UDPSocket = [System.Net.Sockets.Socket]::new(
+                [System.Net.Sockets.AddressFamily]::InterNetworkV6,
+                [System.Net.Sockets.SocketType]::Dgram,
+                [System.Net.Sockets.ProtocolType]::Udp
+            )
+            $UDPSocket.DualMode = $true
+            $UDPSocket.EnableBroadcast = $true
+            $UDPSocket.ReceiveTimeout = $ReceiveTimeout.TotalMilliseconds
 
-            # Blocking Receive() calls, until we do threading/async/events or something
-            $UdpClient.Client.Blocking = $true
-            $UdpClient.Client.ReceiveTimeout = $ReceiveTimeout.TotalMilliseconds
-            $UdpClient.Client.SetSocketOption([System.Net.Sockets.SocketOptionLevel]::Socket, [System.Net.Sockets.SocketOptionName]::ReuseAddress, $true)
+            $UDPSocket.Bind([System.Net.EndPoint] $LocalEndpoint)
+
+            # Blocking ReceiveFrom() calls, until we do threading/async/events or something
+            $UDPSocket.Blocking = $true
 
             $BroadcastEndpoint = [System.Net.IPEndPoint]::new([System.Net.IPAddress]::Broadcast, $LIFX_BROADCAST_PORT)
 
             $Message = [LifxMessageGetService]::new()
             $MessageBytes = $Message.GetMessageBytes()
-            $SendResult = $UdpClient.Send($MessageBytes, $MessageBytes.Length, $BroadcastEndpoint)
+
+            $SendResult = $UDPSocket.SendTo($MessageBytes, $BroadcastEndpoint)
             Write-Verbose -Message ("Sent {0} Bytes" -f $SendResult)
 
             $StartTime = [System.DateTime]::UtcNow
@@ -95,10 +105,13 @@ function Find-Device {
 
             while (([System.DateTime]::UtcNow - $StartTime) -le $ReceiveTimeout) {
                 try {
-                    $RemoteEndpoint = [System.Net.IPEndPoint]::new([System.Net.IPAddress]::Any, $LIFX_BROADCAST_PORT)
-                    $Content = $UdpClient.Receive([ref] $RemoteEndpoint)
+                    $ReceiveBuffer = New-Object -Typename byte[] -ArgumentList 2000
+                    $RemoteEndpoint = [System.Net.IPEndPoint]::new([System.Net.IPAddress]::IPv6Any, $LIFX_BROADCAST_PORT)
 
-                    Write-Verbose -Message ("Received {0} Bytes from {1}:{2}" -f $Content.Length, $RemoteEndpoint.Address.ToString(), $RemoteEndpoint.Port.ToString())
+                    $ReceiveResult = $UDPSocket.ReceiveFrom($ReceiveBuffer, [ref] $RemoteEndpoint)
+                    $Content = $ReceiveBuffer[0..($ReceiveResult-1)]
+
+                    Write-Verbose -Message ("Received {0} Bytes from {1}:{2}" -f $ReceiveResult, $RemoteEndpoint.Address.ToString(), $RemoteEndpoint.Port.ToString())
                     Write-Verbose -Message ("Received: {0}" -f (($Content | ForEach-Object -Process {$PSItem.ToString("X2")}) -join ","))
 
                     $ReceivedMessage = [LifxMessageFactory]::CreateLifxMessage($Content)
@@ -133,10 +146,11 @@ function Find-Device {
 
                         $Message = $MessageType::new()
                         $MessageBytes = $Message.GetMessageBytes()
-                        $SendResult = $UdpClient.Send($MessageBytes, $MessageBytes.Length, $RemoteEndpoint)
+                        $SendResult = $UDPSocket.SendTo($MessageBytes, $RemoteEndpoint)
                         Write-Verbose -Message ("Sent {0} Bytes" -f $SendResult)
 
-                        $Content = $UdpClient.Receive([ref] $RemoteEndpoint)
+                        $ReceiveResult = $UDPSocket.ReceiveFrom($ReceiveBuffer, [ref] $RemoteEndpoint)
+                        $Content = $ReceiveBuffer[0..($ReceiveResult - 1)]
 
                         Write-Verbose -Message ("Received {0} Bytes from {1}:{2}" -f $Content.Length, $RemoteEndpoint.Address.ToString(), $RemoteEndpoint.Port.ToString())
                         Write-Verbose -Message ("Received: {0}" -f (($Content | ForEach-Object -Process {$PSItem.ToString("X2")}) -join ","))
@@ -180,8 +194,9 @@ function Find-Device {
                 }
             }
 
-            if ($UdpClient) {
-                $UdpClient.Close()
+            if ($UDPSocket) {
+                $UDPSocket.Shutdown([System.Net.Sockets.SocketShutdown]::Both)
+                $UDPSocket.Close()
             }
 
             return $DiscoveredDevices.Values
