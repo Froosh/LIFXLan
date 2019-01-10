@@ -8,4 +8,8 @@
     "files.trimTrailingWhitespace": true,
     "git.enableCommitSigning": true,
     "powershell.codeFormatting.preset": "OTBS",
+    "diffEditor.ignoreTrimWhitespace": false,
+    "powershell.codeFormatting.newLineAfterCloseBrace": false,
+    "powershell.debugging.createTemporaryIntegratedConsole": true,
+    "editor.renderControlCharacters": true,
 }
