@@ -62,12 +62,12 @@ function Find-Device {
         # v1 devices may require localport to be the LIFX default port 57600
         [ValidateSet(0,57600)]
         [uint16]
-        $LocalPort = 0
+        $LocalPort = 57600
     )
 
     Begin {
-        $ErrorActionPreference = [System.Management.Automation.ActionPreference]::Stop
         Set-StrictMode -Version Latest
+        $ErrorActionPreference = [System.Management.Automation.ActionPreference]::Stop
 
         [uint16] $LIFX_BROADCAST_PORT = 56700
     }
@@ -84,12 +84,34 @@ function Find-Device {
             )
             $UDPSocket.DualMode = $true
             $UDPSocket.EnableBroadcast = $true
-            $UDPSocket.ReceiveTimeout = $ReceiveTimeout.TotalMilliseconds
+
+            $UDPSocket.SetIPProtectionLevel(
+                [System.Net.Sockets.IPProtectionLevel]::Restricted
+            )
+
+            $UDPSocket.SetSocketOption(
+                [System.Net.Sockets.SocketOptionLevel]::Socket,
+                [System.Net.Sockets.SocketOptionName]::ReuseAddress,
+                $true
+            )
+
+            $UDPSocket.SetSocketOption(
+                [System.Net.Sockets.SocketOptionLevel]::IP,
+                [System.Net.Sockets.SocketOptionName]::PacketInformation,
+                $true
+            )
+
+            $UDPSocket.SetSocketOption(
+                [System.Net.Sockets.SocketOptionLevel]::IPv6,
+                [System.Net.Sockets.SocketOptionName]::PacketInformation,
+                $true
+            )
 
             $UDPSocket.Bind([System.Net.EndPoint] $LocalEndpoint)
 
             # Blocking ReceiveFrom() calls, until we do threading/async/events or something
             $UDPSocket.Blocking = $true
+            $UDPSocket.ReceiveTimeout = $ReceiveTimeout.TotalMilliseconds
 
             $BroadcastEndpoint = [System.Net.IPEndPoint]::new([System.Net.IPAddress]::Broadcast, $LIFX_BROADCAST_PORT)
 
@@ -105,21 +127,23 @@ function Find-Device {
 
             while (([System.DateTime]::UtcNow - $StartTime) -le $ReceiveTimeout) {
                 try {
-                    $ReceiveBuffer = New-Object -Typename byte[] -ArgumentList 2000
-                    $RemoteEndpoint = [System.Net.IPEndPoint]::new([System.Net.IPAddress]::IPv6Any, $LIFX_BROADCAST_PORT)
+                    $ReceiveBuffer = [byte[]]::new($UDPSocket.ReceiveBufferSize)
+                    $ReceiveEndpoint = [System.Net.IPEndPoint]::new([System.Net.IPAddress]::IPv6Any, $LIFX_BROADCAST_PORT)
+                    $ReceivePacketInformation = New-Object -TypeName System.Net.Sockets.IPPacketInformation
 
-                    $ReceiveResult = $UDPSocket.ReceiveFrom($ReceiveBuffer, [ref] $RemoteEndpoint)
+                    $ReceiveSocketFlags = [System.Net.Sockets.SocketFlags]::None
+                    $ReceiveResult = $UDPSocket.ReceiveMessageFrom($ReceiveBuffer, 0, $ReceiveBuffer.Length, [ref] $ReceiveSocketFlags, [ref] $ReceiveEndpoint, [ref] $ReceivePacketInformation)
                     $Content = $ReceiveBuffer[0..($ReceiveResult-1)]
 
-                    Write-Verbose -Message ("Received {0} Bytes from {1}:{2}" -f $ReceiveResult, $RemoteEndpoint.Address.ToString(), $RemoteEndpoint.Port.ToString())
-                    Write-Verbose -Message ("Received: {0}" -f (($Content | ForEach-Object -Process {$PSItem.ToString("X2")}) -join ","))
+                    Write-Verbose -Message ("Received {0} Bytes from {1}:{2} on interface {3} address {4} with flags {5}" -f $ReceiveResult, $ReceiveEndpoint.Address.ToString(), $ReceiveEndpoint.Port.ToString(), $ReceivePacketInformation.Interface, $ReceivePacketInformation.Address, $ReceiveSocketFlags.ToString())
+                    #Write-Verbose -Message ("Received: {0}" -f (($Content | ForEach-Object -Process {$PSItem.ToString("X2")}) -join ","))
 
                     $ReceivedMessage = [LifxMessageFactory]::CreateLifxMessage($Content)
                     Write-Verbose -Message ("Message: {0}" -f $ReceivedMessage.ToString())
 
                     if ($ReceivedMessage -is [LifxMessageStateService]) {
-                        $RemoteEndpoint.Port = $ReceivedMessage.Port
-                        $Device = [LifxLanDevice] @{Identifier = $ReceivedMessage.Header.Target; IPEndPoint = $RemoteEndpoint; ServiceTypes = $ReceivedMessage.Service}
+                        $ReceiveEndpoint.Port = $ReceivedMessage.Port
+                        $Device = [LifxLanDevice] @{Identifier = $ReceivedMessage.Header.Target; IPEndPoint = $ReceiveEndpoint; ServiceTypes = $ReceivedMessage.Service}
 
                         if ($DiscoveredDevices.ContainsKey($Device.Identifier) -and $DiscoveredDevices[$Device.Identifier].ServiceTypes -notcontains $Device.ServiceTypes) {
                             $DiscoveredDevices[$Device.Identifier].ServiceTypes += $Device.ServiceTypes
@@ -149,11 +173,15 @@ function Find-Device {
                         $SendResult = $UDPSocket.SendTo($MessageBytes, $RemoteEndpoint)
                         Write-Verbose -Message ("Sent {0} Bytes" -f $SendResult)
 
-                        $ReceiveResult = $UDPSocket.ReceiveFrom($ReceiveBuffer, [ref] $RemoteEndpoint)
+                        $ReceiveBuffer = [byte[]]::new($UDPSocket.ReceiveBufferSize)
+                        $ReceivePacketInformation = New-Object -TypeName System.Net.Sockets.IPPacketInformation
+
+                        $ReceiveSocketFlags = [System.Net.Sockets.SocketFlags]::None
+                        $ReceiveResult = $UDPSocket.ReceiveMessageFrom($ReceiveBuffer, 0, $ReceiveBuffer.Length, [ref] $ReceiveSocketFlags, [ref] $RemoteEndpoint, [ref] $ReceivePacketInformation)
                         $Content = $ReceiveBuffer[0..($ReceiveResult - 1)]
 
-                        Write-Verbose -Message ("Received {0} Bytes from {1}:{2}" -f $Content.Length, $RemoteEndpoint.Address.ToString(), $RemoteEndpoint.Port.ToString())
-                        Write-Verbose -Message ("Received: {0}" -f (($Content | ForEach-Object -Process {$PSItem.ToString("X2")}) -join ","))
+                        Write-Verbose -Message ("Received {0} Bytes from {1}:{2} on interface {3} address {4} with flags {5}" -f $ReceiveResult, $RemoteEndpoint.Address.ToString(), $RemoteEndpoint.Port.ToString(), $ReceivePacketInformation.Interface, $ReceivePacketInformation.Address, $ReceiveSocketFlags.ToString())
+                        #Write-Verbose -Message ("Received: {0}" -f (($Content | ForEach-Object -Process {$PSItem.ToString("X2")}) -join ","))
 
                         $ReceivedMessage = [LifxMessageFactory]::CreateLifxMessage($Content)
                         Write-Verbose -Message ("Message: {0}" -f $ReceivedMessage.ToString())
@@ -184,7 +212,8 @@ function Find-Device {
                                 $Device.Hardware.Product = $ReceivedMessage.Product
                                 $Device.Hardware.Version = $ReceivedMessage.Version
                             }
-                            Default {}
+                            Default {
+                            }
                         }
                         if ($ReceivedMessage -is [LifxMessageStateService]) {
                         }
@@ -197,6 +226,8 @@ function Find-Device {
             if ($UDPSocket) {
                 $UDPSocket.Shutdown([System.Net.Sockets.SocketShutdown]::Both)
                 $UDPSocket.Close()
+                $UDPSocket.Dispose()
+                $UDPSocket = $null
             }
 
             return $DiscoveredDevices.Values
