@@ -227,7 +227,6 @@ function Find-Device {
             }
 
             if ($UDPSocket) {
-                $UDPSocket.Shutdown([System.Net.Sockets.SocketShutdown]::Both)
                 $UDPSocket.Close()
                 $UDPSocket.Dispose()
                 $UDPSocket = $null
