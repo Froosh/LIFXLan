@@ -85,9 +85,12 @@ function Find-Device {
             $UDPSocket.DualMode = $true
             $UDPSocket.EnableBroadcast = $true
 
+<#
+            # SetIPProtectionLevel may not be supported on non-Windows
             $UDPSocket.SetIPProtectionLevel(
                 [System.Net.Sockets.IPProtectionLevel]::Restricted
             )
+#>
 
             $UDPSocket.SetSocketOption(
                 [System.Net.Sockets.SocketOptionLevel]::Socket,
