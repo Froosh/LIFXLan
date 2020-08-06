@@ -1,17 +1,17 @@
 @{
-    Description            = "Control LIFX Lights with the LIFX LAN v2 protocol"
-    GUID                   = "5dbbc6b0-9b21-408e-98a4-6ce9bf22925d"
+    Description           = "Control LIFX Lights with the LIFX LAN v2 protocol"
+    GUID                  = "5dbbc6b0-9b21-408e-98a4-6ce9bf22925d"
 
     # Follow Semantic Versioning https://semver.org/
-    ModuleVersion          = "0.0.1"
+    ModuleVersion         = "0.0.1"
 
-    Author                 = "Robin@froosh.net"
-    CompanyName            = "Froosh Networks"
-    Copyright              = "(c) 2018 Robin Frousheger"
+    Author                = "Robin@froosh.net"
+    CompanyName           = "Froosh Networks"
+    Copyright             = "(c) 2018 Robin Frousheger"
 
-    ProcessorArchitecture  = "None"
-    CompatiblePSEditions   = @("Desktop", "Core")
-    PowerShellVersion      = "5.1"
+    ProcessorArchitecture = "None"
+    CompatiblePSEditions  = @("Desktop", "Core")
+    PowerShellVersion     = "5.1"
 
     # PowerShellHostName     = ""
     # PowerShellHostVersion  = ""
@@ -21,29 +21,29 @@
     # Minimum version of the common language runtime (CLR) required by this module. This prerequisite is valid for the PowerShell Desktop edition only.
     # CLRVersion             = ""
 
-    DefaultCommandPrefix   = "LifxLan"
+    DefaultCommandPrefix  = "LifxLan"
 
-    RootModule             = "LifxLan.psm1"
-    NestedModules          = @()
+    RootModule            = "LifxLan.psm1"
+    NestedModules         = @()
 
-    RequiredModules        = @()
-    RequiredAssemblies     = @()
+    RequiredModules       = @()
+    RequiredAssemblies    = @()
 
-    AliasesToExport        = @()
-    DscResourcesToExport   = @()
-    CmdletsToExport        = @()
-    FunctionsToExport      = @("Find-Device")
-    VariablesToExport      = @()
+    AliasesToExport       = @()
+    DscResourcesToExport  = @()
+    CmdletsToExport       = @()
+    FunctionsToExport     = @("Find-Device")
+    VariablesToExport     = @()
 
-    FormatsToProcess       = @()
-    ScriptsToProcess       = @()
-    TypesToProcess         = @()
+    FormatsToProcess      = @()
+    ScriptsToProcess      = @()
+    TypesToProcess        = @()
 
-    ModuleList             = @()
-    FileList               = @()
+    ModuleList            = @()
+    FileList              = @()
 
     # PowerShell Gallery: Define your module"s metadata
-    PrivateData = @{
+    PrivateData           = @{
         PSData = @{
             # What keywords represent your PowerShell module? (eg. cloud, tools, framework, vendor)
             Tags         = @("LIFX")

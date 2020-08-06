@@ -1,5 +1,7 @@
 {
+    "diffEditor.ignoreTrimWhitespace": false,
     "editor.insertSpaces": true,
+    "editor.renderControlCharacters": true,
     "editor.renderWhitespace": "boundary",
     "editor.tabSize": 4,
     "files.associations": {
@@ -7,9 +9,8 @@
     },
     "files.trimTrailingWhitespace": true,
     "git.enableCommitSigning": true,
-    "powershell.codeFormatting.preset": "OTBS",
-    "diffEditor.ignoreTrimWhitespace": false,
+    "powershell.codeFormatting.addWhitespaceAroundPipe": true,
     "powershell.codeFormatting.newLineAfterCloseBrace": false,
+    "powershell.codeFormatting.preset": "OTBS",
     "powershell.debugging.createTemporaryIntegratedConsole": true,
-    "editor.renderControlCharacters": true,
 }

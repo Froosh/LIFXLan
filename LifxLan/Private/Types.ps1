@@ -187,19 +187,19 @@ class LifxHeader {
         $StringBuilder = [System.Text.StringBuilder]::new()
 
         $StringBuilder.AppendFormat("Type: {0}", $this.Type)
-        if ($AllFields) {$StringBuilder.AppendFormat(", Origin: {0}", $this.Origin)}
+        if ($AllFields) { $StringBuilder.AppendFormat(", Origin: {0}", $this.Origin) }
         $StringBuilder.AppendFormat(", Tagged: {0}", $this.Tagged)
-        if ($AllFields) {$StringBuilder.AppendFormat(", Addressable: {0}", $this.Addressable)}
-        if ($AllFields) {$StringBuilder.AppendFormat(", Protocol: {0:X4}", $this.Protocol)}
+        if ($AllFields) { $StringBuilder.AppendFormat(", Addressable: {0}", $this.Addressable) }
+        if ($AllFields) { $StringBuilder.AppendFormat(", Protocol: {0:X4}", $this.Protocol) }
         $StringBuilder.AppendFormat(", Source: {0:X8}", $this.Source)
         $StringBuilder.AppendFormat(", Target: {0}", [System.BitConverter]::ToString([System.BitConverter]::GetBytes($this.Target)))
-        if ($AllFields) {$StringBuilder.AppendFormat(", R1: {0}", [System.Text.Encoding]::ASCII.GetString($this.Reserved1))}
-        if ($AllFields) {$StringBuilder.AppendFormat(", R2: {0:X2}", $this.Reserved2)}
+        if ($AllFields) { $StringBuilder.AppendFormat(", R1: {0}", [System.Text.Encoding]::ASCII.GetString($this.Reserved1)) }
+        if ($AllFields) { $StringBuilder.AppendFormat(", R2: {0:X2}", $this.Reserved2) }
         $StringBuilder.AppendFormat(", AckReqd: {0}", $this.AcknowledgementRequired)
         $StringBuilder.AppendFormat(", ResponseReqd: {0}", $this.ResponseRequired)
         $StringBuilder.AppendFormat(", Sequence: {0}", $this.Sequence)
         $StringBuilder.AppendFormat(", Timestamp: {0:o}", $this.Timestamp)
-        if ($AllFields) {$StringBuilder.AppendFormat(", R4: {0:X4}", $this.Reserved4)}
+        if ($AllFields) { $StringBuilder.AppendFormat(", R4: {0:X4}", $this.Reserved4) }
 
         return $StringBuilder.ToString()
     }
@@ -266,11 +266,11 @@ class LifxMessage {
         }
 
         $MessageBytes = $this.Header.GetHeaderBytes()
-        Write-Verbose -Message ("[LifxMessage] Header: {0}" -f (($MessageBytes | ForEach-Object -Process {$PSItem.ToString("X2")}) -join ","))
+        Write-Verbose -Message ("[LifxMessage] Header: {0}" -f (($MessageBytes | ForEach-Object -Process { $PSItem.ToString("X2") }) -join ","))
 
         if ($Payload) {
             $MessageBytes += $Payload
-            Write-Verbose -Message ("[LifxMessage] Payload: {0}" -f (($Payload | ForEach-Object -Process {$PSItem.ToString("X2")}) -join ","))
+            Write-Verbose -Message ("[LifxMessage] Payload: {0}" -f (($Payload | ForEach-Object -Process { $PSItem.ToString("X2") }) -join ","))
         }
 
         return $MessageBytes
@@ -353,7 +353,7 @@ class LifxMessageStateHostInfo : LifxMessage {
         $StringBuilder.AppendFormat(", Signal: {0}", $this.Signal)
         $StringBuilder.AppendFormat(", TxCount: {0}", $this.Tx)
         $StringBuilder.AppendFormat(", RxCount: {0}", $this.Rx)
-        if ($AllFields) {$StringBuilder.AppendFormat(", Reserved: {0}", $this.Reserved)}
+        if ($AllFields) { $StringBuilder.AppendFormat(", Reserved: {0}", $this.Reserved) }
 
         return $StringBuilder.ToString()
     }
@@ -387,7 +387,7 @@ class LifxMessageStateHostFirmware : LifxMessage {
         $StringBuilder = [System.Text.StringBuilder]::new($this.Header.ToString($AllFields))
         $StringBuilder.AppendFormat(", BuildDate: {0:o}", $this.Build)
         $StringBuilder.AppendFormat(", Version: {0:X8}", $this.Version)
-        if ($AllFields) {$StringBuilder.AppendFormat(", Reserved: {0:X16}", $this.Reserved)}
+        if ($AllFields) { $StringBuilder.AppendFormat(", Reserved: {0:X16}", $this.Reserved) }
 
         return $StringBuilder.ToString()
     }
@@ -424,7 +424,7 @@ class LifxMessageStateWifiInfo : LifxMessage {
         $StringBuilder.AppendFormat(", Signal: {0}", $this.Signal)
         $StringBuilder.AppendFormat(", TxCount: {0}", $this.Tx)
         $StringBuilder.AppendFormat(", RxCount: {0}", $this.Rx)
-        if ($AllFields) {$StringBuilder.AppendFormat(", Reserved: {0}", $this.Reserved)}
+        if ($AllFields) { $StringBuilder.AppendFormat(", Reserved: {0}", $this.Reserved) }
 
         return $StringBuilder.ToString()
     }
@@ -458,7 +458,7 @@ class LifxMessageStateWifiFirmware : LifxMessage {
         $StringBuilder = [System.Text.StringBuilder]::new($this.Header.ToString($AllFields))
         $StringBuilder.AppendFormat(", BuildDate: {0:o}", $this.Build)
         $StringBuilder.AppendFormat(", Version: {0:X8}", $this.Version)
-        if ($AllFields) {$StringBuilder.AppendFormat(", Reserved: {0:X16}", $this.Reserved)}
+        if ($AllFields) { $StringBuilder.AppendFormat(", Reserved: {0:X16}", $this.Reserved) }
 
         return $StringBuilder.ToString()
     }

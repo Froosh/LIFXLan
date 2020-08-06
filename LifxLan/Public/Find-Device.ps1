@@ -60,7 +60,7 @@ function Find-Device {
         $LocalIP = [System.Net.IPAddress]::IPv6Any,
 
         # v1 devices may require localport to be the LIFX default port 57600
-        [ValidateSet(0,57600)]
+        [ValidateSet(0, 57600)]
         [uint16]
         $LocalPort = 57600
     )
@@ -75,7 +75,7 @@ function Find-Device {
     Process {
         if ($All) {
             $LocalEndpoint = [System.Net.IPEndPoint]::new($LocalIP, $LocalPort)
-            Write-Verbose -Message ("Local Endpoint: {0}:{1}" -f $LocalEndpoint.Address.ToString(),$LocalEndpoint.Port.ToString())
+            Write-Verbose -Message ("Local Endpoint: {0}:{1}" -f $LocalEndpoint.Address.ToString(), $LocalEndpoint.Port.ToString())
 
             $UDPSocket = [System.Net.Sockets.Socket]::new(
                 [System.Net.Sockets.AddressFamily]::InterNetworkV6,
@@ -85,12 +85,12 @@ function Find-Device {
             $UDPSocket.DualMode = $true
             $UDPSocket.EnableBroadcast = $true
 
-<#
+            <#
             # SetIPProtectionLevel may not be supported on non-Windows
             $UDPSocket.SetIPProtectionLevel(
                 [System.Net.Sockets.IPProtectionLevel]::Restricted
             )
-#>
+            #>
 
             $UDPSocket.SetSocketOption(
                 [System.Net.Sockets.SocketOptionLevel]::Socket,
@@ -136,7 +136,7 @@ function Find-Device {
 
                     $ReceiveSocketFlags = [System.Net.Sockets.SocketFlags]::None
                     $ReceiveResult = $UDPSocket.ReceiveMessageFrom($ReceiveBuffer, 0, $ReceiveBuffer.Length, [ref] $ReceiveSocketFlags, [ref] $ReceiveEndpoint, [ref] $ReceivePacketInformation)
-                    $Content = $ReceiveBuffer[0..($ReceiveResult-1)]
+                    $Content = $ReceiveBuffer[0..($ReceiveResult - 1)]
 
                     Write-Verbose -Message ("Received {0} Bytes from {1}:{2} on interface {3} address {4} with flags {5}" -f $ReceiveResult, $ReceiveEndpoint.Address.ToString(), $ReceiveEndpoint.Port.ToString(), $ReceivePacketInformation.Interface, $ReceivePacketInformation.Address, $ReceiveSocketFlags.ToString())
                     #Write-Verbose -Message ("Received: {0}" -f (($Content | ForEach-Object -Process {$PSItem.ToString("X2")}) -join ","))
@@ -146,7 +146,7 @@ function Find-Device {
 
                     if ($ReceivedMessage -is [LifxMessageStateService]) {
                         $ReceiveEndpoint.Port = $ReceivedMessage.Port
-                        $Device = [LifxLanDevice] @{Identifier = $ReceivedMessage.Header.Target; IPEndPoint = $ReceiveEndpoint; ServiceTypes = $ReceivedMessage.Service}
+                        $Device = [LifxLanDevice] @{Identifier = $ReceivedMessage.Header.Target; IPEndPoint = $ReceiveEndpoint; ServiceTypes = $ReceivedMessage.Service }
 
                         if ($DiscoveredDevices.ContainsKey($Device.Identifier) -and $DiscoveredDevices[$Device.Identifier].ServiceTypes -notcontains $Device.ServiceTypes) {
                             $DiscoveredDevices[$Device.Identifier].ServiceTypes += $Device.ServiceTypes
@@ -192,7 +192,7 @@ function Find-Device {
                         switch ($ReceivedMessage.GetType()) {
                             ([LifxMessageStateService]) {
                                 $RemoteEndpoint.Port = $ReceivedMessage.Port
-                                $Device = [LifxLanDevice] @{Identifier = $ReceivedMessage.Header.Target; IPEndPoint = $RemoteEndpoint; ServiceTypes = $ReceivedMessage.Service}
+                                $Device = [LifxLanDevice] @{Identifier = $ReceivedMessage.Header.Target; IPEndPoint = $RemoteEndpoint; ServiceTypes = $ReceivedMessage.Service }
 
                                 if ($DiscoveredDevices.ContainsKey($Device.Identifier) -and $DiscoveredDevices[$Device.Identifier].ServiceTypes -notcontains $Device.ServiceTypes) {
                                     $DiscoveredDevices[$Device.Identifier].ServiceTypes += $Device.ServiceTypes
