@@ -1,16 +1,12 @@
 {
     "diffEditor.ignoreTrimWhitespace": false,
-    "editor.insertSpaces": true,
     "editor.renderControlCharacters": true,
     "editor.renderWhitespace": "boundary",
-    "editor.tabSize": 4,
     "files.associations": {
         "*.ps1xml": "xml"
     },
-    "files.trimTrailingWhitespace": true,
     "git.enableCommitSigning": true,
-    "powershell.codeFormatting.addWhitespaceAroundPipe": true,
     "powershell.codeFormatting.newLineAfterCloseBrace": false,
     "powershell.codeFormatting.preset": "OTBS",
-    "powershell.debugging.createTemporaryIntegratedConsole": true,
+    "powershell.debugging.createTemporaryIntegratedConsole": true
 }
