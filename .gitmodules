@@ -1,3 +1,0 @@
-[submodule "LIFXProducts"]
-    path = .\\LIFX\\products\\
-    url = https://github.com/LIFX/products.git
